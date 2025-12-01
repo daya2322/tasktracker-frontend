@@ -16,10 +16,10 @@ export default function Home() {
       const res = await isVerify();
       if (res.error) {
         localStorage.removeItem("token");
-        showSnackbar(res.data.message, "error");
+        showSnackbar(res.data.message || "Verification failed", "error");
         setIsLoading(false);
-      }
-      if (res.code === 200) {
+      } else {
+        // Success - user is verified
         localStorage.setItem("role", res?.data?.role?.id);
         localStorage.setItem("country", res?.data?.companies[0]?.selling_currency);
         router.push("/profile");
