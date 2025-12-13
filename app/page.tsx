@@ -9,24 +9,50 @@ import { useSnackbar } from "./services/snackbarContext";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
-  const { showSnackbar } = useSnackbar();
   const router = useRouter();
+  const { showSnackbar } = useSnackbar();
+
   useEffect(() => {
+    let isMounted = true;
+
     async function verifyUser() {
-      const res = await isVerify();
-      if (res.error) {
-        localStorage.removeItem("token");
-        showSnackbar(res.data.message || "Verification failed", "error");
-        setIsLoading(false);
-      } else {
-        // Success - user is verified
-        localStorage.setItem("role", res?.data?.role?.id);
-        localStorage.setItem("country", res?.data?.companies[0]?.selling_currency);
-        router.push("/profile");
+      try {
+        const res = await isVerify();
+
+        if (!isMounted) return;
+
+        if (res?.error) {
+          localStorage.removeItem("token");
+          setIsLoading(false);
+        } else {
+          localStorage.setItem("role", res?.data?.role?.id);
+          localStorage.setItem(
+            "country",
+            res?.data?.companies?.[0]?.selling_currency
+          );
+
+          router.replace("/profile");
+        }
+      } catch (err) {
+        if (isMounted) {
+          showSnackbar("Verification failed", "error");
+          setIsLoading(false);
+        }
       }
     }
-    if (localStorage.getItem("token")) verifyUser();
-    else setIsLoading(false);
-  }, []);
-  return isLoading ? <Loading /> : <LoginPage />;
+
+    if (typeof window !== "undefined" && localStorage.getItem("token")) {
+      verifyUser();
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, showSnackbar]);
+
+  if (isLoading) return <Loading />;
+
+  return <LoginPage />;
 }

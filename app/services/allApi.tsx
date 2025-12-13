@@ -21,7 +21,9 @@ export function handleError(error: unknown) {
 
         if (error.response.status === 401) {
             localStorage.removeItem("token");
-            window.location.href = "/login";
+            // window.location.href = "/login";
+            if (window.location.pathname !== "/login")
+            window.location.reload();
         }
 
         return { error: true, data: error.response.data };
@@ -58,4 +60,48 @@ export const isVerify = async () => {
     } catch (error) {
         return handleError(error);
     }
+};
+
+export const punchInApi = async (address: string) => {
+  try {
+    const res = await API.post("/api/attendance/punch-in", { address });
+    return { error: false, data: res.data };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// Punch Out
+export const punchOutApi = async (address: string) => {
+  try {
+    const res = await API.post("/api/attendance/punch-out", { address });
+    return { error: false, data: res.data };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// Today Attendance
+export const getTodayAttendanceApi = async () => {
+  try {
+    const res = await API.get("/api/attendance/today");
+    return { error: false, data: res.data };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getAddressFromCoords = async (
+  latitude: number,
+  longitude: number
+) => {
+  try {
+    const res = await API.post("/api/location/reverse", {
+      latitude,
+      longitude,
+    });
+    return res.data;
+  } catch (err) {
+    return handleError(err);
+  }
 };
