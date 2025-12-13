@@ -5,12 +5,9 @@ import { Search } from "lucide-react";
 export default function TopNavbar() {
   return (
     <header className="h-16 bg-[#0b1e3a] text-white flex items-center justify-between px-6">
-      {/* Logo */}
       <div className="text-xl font-bold tracking-wide">
         Work<span className="text-pink-500">Sphere</span>
       </div>
-
-      {/* Search */}
       <div className="relative w-[420px]">
         <Search className="absolute left-3 top-2.5 text-white-400" size={18} />
         <input
@@ -19,7 +16,6 @@ export default function TopNavbar() {
         />
       </div>
 
-      {/* Right section */}
       <div className="flex items-center gap-6">
         <span className="text-sm">Days Left : 292</span>
 
