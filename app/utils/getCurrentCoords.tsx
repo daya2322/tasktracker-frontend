@@ -1,10 +1,17 @@
-export const getCurrentCoords = (): Promise<{
+export type Coordinates = {
   latitude: number;
   longitude: number;
-}> => {
+};
+
+export const getCurrentCoords = (): Promise<Coordinates> => {
   return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Geolocation is only available in browser"));
+      return;
+    }
+
     if (!navigator.geolocation) {
-      reject("Geolocation not supported");
+      reject(new Error("Geolocation is not supported"));
       return;
     }
 
@@ -15,8 +22,26 @@ export const getCurrentCoords = (): Promise<{
           longitude: position.coords.longitude,
         });
       },
-      () => reject("Location permission denied"),
-      { enableHighAccuracy: true }
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            reject(new Error("Location permission denied"));
+            break;
+          case error.POSITION_UNAVAILABLE:
+            reject(new Error("Location unavailable"));
+            break;
+          case error.TIMEOUT:
+            reject(new Error("Location request timed out"));
+            break;
+          default:
+            reject(new Error("Failed to get location"));
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     );
   });
 };

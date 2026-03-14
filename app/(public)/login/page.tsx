@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useAuth } from "@/app/components/contexts/authContext";
+import { ErrorMessage, Form, Formik } from "formik";
 import { useRouter } from "next/navigation";
-import { Formik, Form, ErrorMessage } from "formik";
+import { useEffect } from "react";
 import * as Yup from "yup";
 import Button from "../../components/customButton";
 import CustomPasswordInput from "../../components/customPasswordInput";
 import CustomTextInput from "../../components/CustomTextInput";
 import Logo from "../../components/logo";
-import { useAuth } from "@/app/components/contexts/authContect";
 
 const LoginSchema = Yup.object({
   userId: Yup.string().required("User ID is required"),
@@ -23,8 +23,8 @@ export default function LoginPage() {
 
   // ✅ Redirect safely
   useEffect(() => {
-    if (user) {
-      router.replace("/dashboard");
+    if (user && user.role) {
+      router.push("/dashboard");
     }
   }, [user, router]);
 
@@ -49,11 +49,10 @@ export default function LoginPage() {
             });
 
             if (res?.error) {
-              setErrors({ userId: res.data.message });
+              setErrors({ userId: res.data?.message?.join(", ") || "Login failed", });
               return;
             }
-
-            router.replace("/dashboard");
+            router.push("/dashboard");
           }}
         >
           {({ isSubmitting, handleChange, values }) => (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SnackbarProvider } from "./services/snackbarContext";
 import { CountryFlagPolyfill } from "./emojis";
-import { AuthProvider } from "@/app/components/contexts/authContect";  // ✅ ADD THIS
+import { AuthProvider } from "@/app/components/contexts/authContext";  // ✅ ADD THIS
 import "./globals.css";
 
 const inter = Inter({
