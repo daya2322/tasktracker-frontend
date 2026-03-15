@@ -11,6 +11,14 @@ type User = {
   email: string;
   role: string;
   message: string[];
+
+   phone?: string;
+  department?: string;
+  location?: string;
+  bio?: string;
+  joinDate?: string;
+  company?: string;
+  website?: string;
 };
 
 type LoginCredentials = {

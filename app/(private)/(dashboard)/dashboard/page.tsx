@@ -1,5 +1,8 @@
 "use client";
 
+import AdminDashboard from "@/app/components/adminDashboard";
+import CompanyDashboard from "@/app/components/companyDashboard";
+import EmployeeDashboard from "@/app/components/employeeDashboard";
 import Loading from "@/app/components/Loading";
 import { isVerify } from "@/app/services/allApi";
 import React, { useEffect, useState } from "react";
@@ -16,6 +19,7 @@ export default function DashboardPage() {
       
       if (!res.error) {
         setRole(res.data.data.role);
+        console.log("User role:", res.data.data.role);
       }
 
       setLoading(false);
@@ -31,15 +35,15 @@ export default function DashboardPage() {
   return (
     <>
       {role === "Employee" && (
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Welcome to Employee Dashboard</h1>
+        <EmployeeDashboard />
       )}
 
       {role === "Company" && (
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Welcome to Company Dashboard</h1>
+        <CompanyDashboard />
       )}
 
       {role === "Admin" && (
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Welcome to Admin Dashboard</h1>
+        <AdminDashboard />
       )}
     </>
   );
