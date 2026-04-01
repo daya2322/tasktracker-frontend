@@ -257,7 +257,7 @@ export default function TopNavbar({
               }}
             >
               <Image
-                src={isDark ? "/logoWhite2.jpg" : "/logo.jpg"}
+                src={isDark ? "/logoWhite2.jpg" : "/logoWhite2.jpg"}
                 width={90} height={24} alt="logo"
                 style={{ height: 22, width: "auto", display: "block" }}
               />
