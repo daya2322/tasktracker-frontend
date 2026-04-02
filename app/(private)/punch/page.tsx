@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-import RequireAuth from "@/app/components/requireAuth";
 import { useAuth } from "@/app/components/contexts/authContext";
 import PunchModal from "@/app/components/punchModal";
-import LogoutBtn from "@/app/components/logoutBtn";
+import RequireAuth from "@/app/components/requireAuth";
 
 import {
+  getAddressFromCoords,
+  getTodayAttendanceApi,
   punchInApi,
   punchOutApi,
-  getTodayAttendanceApi,
-  getAddressFromCoords,
 } from "@/app/services/allApi";
 
 import { getCurrentCoords } from "@/app/utils/getCurrentCoords";
@@ -53,10 +52,10 @@ export default function PunchInPage() {
       }
 
       // ✅ Once punched in → NEVER open modal again
-      if (attendance.punchOut) {
+      if (attendance.punch_out) {
         setPunchStatus("PUNCHED_OUT");
         setShowPunchModal(false);
-      } else if (attendance.punchIn) {
+      } else if (attendance.punch_in) {
         setPunchStatus("PUNCHED_IN");
         setShowPunchModal(false);
       }
