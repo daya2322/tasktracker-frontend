@@ -2,6 +2,7 @@
 
 import { useTheme } from "@/app/components/contexts/themeContext";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import SystemSettings from "./systemSettings";
 import { createCompanyApi, deleteCompanyApi, fetchAuditLogsApi, fetchCompaniesApi, fetchPlanDistApi, fetchRevenueApi, fetchStatsApi, toggleSuspendApi } from "../services/allApi"; // ← adjust path to your api.ts
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -329,6 +330,7 @@ export default function AdminDashboard() {
   const [toast,           setToast]           = useState<{ msg: string; ok: boolean } | null>(null);
   const [showPassword,    setShowPassword]    = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [formData, setFormData] = useState<CompanyFormData>({
     name: "", industry: "", owner: "", email: "", phone: "",
@@ -538,6 +540,12 @@ export default function AdminDashboard() {
 
   return (
     <>
+
+    {showSettings && <SystemSettings onBack={() => setShowSettings(false)} />}
+    
+    <div style={{ display: showSettings ? "none" : "flex", flexDirection: "column" }}>
+
+    
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
         .ad-root * { box-sizing: border-box; }
@@ -585,7 +593,7 @@ export default function AdminDashboard() {
               style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, background: `linear-gradient(135deg,${tk.acc},${tk.accDark})`, border: "none", color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: "inherit", boxShadow: `0 0 20px ${tk.acc}40` }}>
               🏢 Add Company
             </button>
-            <button className="ad-btn"
+            <button onClick={() => setShowSettings(true)} className="ad-btn"
               style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, background: `rgba(139,92,246,0.12)`, border: `1px solid rgba(139,92,246,0.3)`, color: "#a78bfa", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>
               ⚙️ System Settings
             </button>
@@ -1078,6 +1086,7 @@ export default function AdminDashboard() {
           </div>
         </Modal>
       )}
+      </div>
     </>
   );
 }
