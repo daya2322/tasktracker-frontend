@@ -370,3 +370,402 @@ export const fetchAuditLogsApi = async () => {
     return { error: false, data: res.data };
   } catch (e) { return handleError(e); }
 };
+
+/* ================= DASHBOARD — SYSTEM HEALTH ================= */
+
+export interface SystemHealth {
+  uptime_seconds: number;
+  process_uptime_seconds: number;
+  memory: {
+    total_bytes: number;
+    free_bytes: number;
+    used_bytes: number;
+    used_pct: number;
+  };
+  process_memory: {
+    heap_used_bytes: number;
+    heap_total_bytes: number;
+    rss_bytes: number;
+  };
+  cpu: {
+    load_avg_1: number;
+    load_avg_5: number;
+    load_avg_15: number;
+    cores: number;
+    load_pct: number;
+  };
+  db_pool: {
+    limit: number;
+    active: number;
+    free: number;
+    active_pct: number;
+  };
+  checked_at: string;
+}
+
+// GET /api/dashboard/system-health
+export const getSystemHealthApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: SystemHealth };
+}> => {
+  try {
+    const res = await API.get("/api/dashboard/system-health");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+/* ================= ADMIN SETTINGS — TYPES ================= */
+
+export interface GeneralSettings {
+  platform_name?: string;
+  primary_domain?: string;
+  default_timezone?: string;
+  default_language?: string;
+  currency?: string;
+  support_email?: string;
+  max_companies?: string | number;
+  max_users_per_co?: string | number;
+  session_timeout_min?: string | number;
+}
+
+export interface SecuritySettings {
+  id: number;
+  two_factor_auth: 0 | 1 | boolean;
+  force_https: 0 | 1 | boolean;
+  ip_allowlist: 0 | 1 | boolean;
+  brute_force_protection: 0 | 1 | boolean;
+  audit_log_retention: 0 | 1 | boolean;
+  auto_suspend_inactive: 0 | 1 | boolean;
+  encrypted_data_at_rest: 0 | 1 | boolean;
+  gdpr_compliance_mode: 0 | 1 | boolean;
+  min_password_length: number;
+  password_expiry_days: number;
+  prevent_reuse_count: number;
+}
+
+export interface NotificationChannel {
+  id: number;
+  name: string;
+  label: string;
+  icon: string;
+  color: string;
+  is_active: 0 | 1;
+}
+
+export interface NotificationEvent {
+  id: number;
+  name: string;
+  label: string;
+  is_active: 0 | 1;
+}
+
+export interface BillingOverview {
+  mrr: number;
+  arr: number;
+  avg_plan: number;
+  churn_rate: string;
+}
+
+export interface BillingGateway {
+  id: number;
+  gateway: string;
+  webhook_url: string | null;
+  invoice_currency: string;
+  gateway_api_key: string;
+}
+
+export interface Integration {
+  id: number;
+  name: string;
+  label: string;
+  icon: string;
+  description: string;
+  color: string;
+  status: "connected" | "disconnected";
+}
+
+export interface WebhookSettings {
+  id: number;
+  endpoint_url: string | null;
+  retry_policy: string;
+  signing_secret: string;
+}
+
+export interface AppearanceSettings {
+  theme_mode?: "dark" | "light" | "system";
+  accent_color?: string;
+  density?: "compact" | "normal" | "relaxed";
+}
+
+export interface ApiKey {
+  id: number;
+  name: string;
+  key_prefix: string;
+  key_preview: string;
+  status: "active" | "revoked";
+  last_used: string | null;
+  created_at: string;
+}
+
+export interface RateLimits {
+  id: number;
+  req_per_minute: number;
+  req_per_hour: number;
+  burst_limit: number;
+}
+
+export interface BackupConfig {
+  id: number;
+  frequency: string;
+  retention_period: string;
+  destination: string | null;
+  encryption_key_id: string | null;
+}
+
+export interface BackupHistoryEntry {
+  id: number;
+  type: string;
+  status: "running" | "success" | "failed";
+  size_gb: number | null;
+  triggered_by: string;
+  created_at: string;
+}
+
+/* ================= ADMIN SETTINGS — GENERAL ================= */
+
+export const getGeneralSettingsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: GeneralSettings; message?: string };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/general");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateGeneralSettingsApi = async (payload: Partial<GeneralSettings>) => {
+  try {
+    const res = await API.put("/api/admin/settings/general", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — SECURITY ================= */
+
+export const getSecuritySettingsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: SecuritySettings; message?: string };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/security");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateSecuritySettingsApi = async (payload: Partial<SecuritySettings>) => {
+  try {
+    const res = await API.put("/api/admin/settings/security", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — NOTIFICATIONS ================= */
+
+export const getNotificationSettingsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: { channels: NotificationChannel[]; events: NotificationEvent[] } };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/notifications");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateNotificationSettingsApi = async (payload: {
+  channels?: { id: number; is_active: 0 | 1 | boolean }[];
+  events?: { id: number; is_active: 0 | 1 | boolean }[];
+}) => {
+  try {
+    const res = await API.put("/api/admin/settings/notifications", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — BILLING ================= */
+
+export const getBillingOverviewApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: BillingOverview };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/billing/overview");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const getBillingGatewayApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: BillingGateway };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/billing/gateway");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateBillingGatewayApi = async (payload: Partial<BillingGateway>) => {
+  try {
+    const res = await API.put("/api/admin/settings/billing/gateway", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — INTEGRATIONS ================= */
+
+export const getIntegrationsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: Integration[] };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/integrations");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const toggleIntegrationApi = async (name: string) => {
+  try {
+    const res = await API.post(`/api/admin/settings/integrations/${encodeURIComponent(name)}/toggle`);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+export const getWebhookSettingsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: WebhookSettings };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/integrations/webhook");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateWebhookSettingsApi = async (payload: Partial<WebhookSettings>) => {
+  try {
+    const res = await API.put("/api/admin/settings/integrations/webhook", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — APPEARANCE ================= */
+
+export const getAppearanceSettingsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: AppearanceSettings };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/appearance");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateAppearanceSettingsApi = async (payload: Partial<AppearanceSettings>) => {
+  try {
+    const res = await API.put("/api/admin/settings/appearance", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — API KEYS ================= */
+
+export const getApiKeysApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: ApiKey[] };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/api-keys");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const generateApiKeyApi = async (payload: { name: string; type?: "live" | "test" | "ci" }) => {
+  try {
+    const res = await API.post("/api/admin/settings/api-keys", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+export const revokeApiKeyApi = async (id: number) => {
+  try {
+    const res = await API.delete(`/api/admin/settings/api-keys/${id}`);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+export const getRateLimitsApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: RateLimits };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/api-keys/rate-limits");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateRateLimitsApi = async (payload: Partial<Pick<RateLimits, "req_per_minute" | "req_per_hour" | "burst_limit">>) => {
+  try {
+    const res = await API.put("/api/admin/settings/api-keys/rate-limits", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — BACKUP ================= */
+
+export const getBackupConfigApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: BackupConfig };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/backup/config");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const updateBackupConfigApi = async (payload: Partial<BackupConfig>) => {
+  try {
+    const res = await API.put("/api/admin/settings/backup/config", payload);
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+export const getBackupHistoryApi = async (): Promise<{
+  error: boolean;
+  data: { status: boolean; data: BackupHistoryEntry[] };
+}> => {
+  try {
+    const res = await API.get("/api/admin/settings/backup/history");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e) as never; }
+};
+
+export const runBackupApi = async () => {
+  try {
+    const res = await API.post("/api/admin/settings/backup/run");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+export const verifyBackupApi = async () => {
+  try {
+    const res = await API.post("/api/admin/settings/backup/verify");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};
+
+/* ================= ADMIN SETTINGS — RESET ================= */
+
+export const resetAllSettingsApi = async () => {
+  try {
+    const res = await API.delete("/api/admin/settings/reset");
+    return { error: false, data: res.data };
+  } catch (e) { return handleError(e); }
+};

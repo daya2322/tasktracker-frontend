@@ -3,7 +3,8 @@
 import { useTheme } from "@/app/components/contexts/themeContext";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import SystemSettings from "./systemSettings";
-import { createCompanyApi, deleteCompanyApi, fetchAuditLogsApi, fetchCompaniesApi, fetchPlanDistApi, fetchRevenueApi, fetchStatsApi, toggleSuspendApi } from "../services/allApi"; // ← adjust path to your api.ts
+import { createCompanyApi, deleteCompanyApi, fetchAuditLogsApi, fetchCompaniesApi, fetchPlanDistApi, fetchRevenueApi, fetchStatsApi, getSystemHealthApi, toggleSuspendApi } from "../services/allApi"; // ← adjust path to your api.ts
+import type { SystemHealth } from "../services/allApi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Company {
@@ -310,6 +311,7 @@ export default function AdminDashboard() {
   const [revenueData,   setRevenueData]   = useState<RevenuePoint[]>([]);
   const [planDist,      setPlanDist]      = useState<PlanDist[]>([]);
   const [auditLogs,     setAuditLogs]     = useState<AuditLog[]>([]);
+  const [health,        setHealth]        = useState<SystemHealth | null>(null);
 
   // ── Loading state ──
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -391,17 +393,23 @@ export default function AdminDashboard() {
     setLoadingLogs(false);
   }, []);
 
+  const loadHealth = useCallback(async () => {
+    const res = await getSystemHealthApi();
+    if (!res.error && res.data?.status) setHealth(res.data.data);
+  }, []);
+
   useEffect(() => {
     const loadInitialData = async () => {
       await Promise.all([
         loadCompanies(),
         loadStats(),
         loadRevenue(),
-        loadPlanDist()
+        loadPlanDist(),
+        loadHealth(),
       ]);
     };
     loadInitialData();
-  }, [loadCompanies, loadStats, loadRevenue, loadPlanDist]);
+  }, [loadCompanies, loadStats, loadRevenue, loadPlanDist, loadHealth]);
 
   // Load audit logs only when tab is opened
   useEffect(() => {
@@ -523,15 +531,60 @@ export default function AdminDashboard() {
     setShowDeleteId(null);
   };
 
-  // ── Static system metrics (replace with real API if available) ──
-  const sysMetrics: SysMetric[] = [
-    { label: "CPU Usage",      value: 42,  unit: "%",    color: "#f59e0b", warn: 80  },
-    { label: "Memory",         value: 61,  unit: "%",    color: "#8b5cf6", warn: 85  },
-    { label: "Disk I/O",       value: 28,  unit: "%",    color: "#3b82f6", warn: 90  },
-    { label: "Network Out",    value: 74,  unit: "MB/s", color: "#10b981", warn: 95  },
-    { label: "DB Connections", value: 38,  unit: "/100", color: "#f43f5e", warn: 80  },
-    { label: "API Latency",    value: 124, unit: "ms",   color: "#f59e0b", warn: 500 },
-  ];
+  // ── System metrics derived from /api/dashboard/system-health ──
+  const sysMetrics: SysMetric[] = useMemo(() => {
+    if (!health) return [];
+    const heapUsedMB  = Math.round(health.process_memory.heap_used_bytes  / 1024 / 1024);
+    const heapTotalMB = Math.max(1, Math.round(health.process_memory.heap_total_bytes / 1024 / 1024));
+    const procUpDays  = Math.max(1, Math.round(health.process_uptime_seconds / 86400));
+    return [
+      { label: "CPU Load",   value: health.cpu.load_pct,    unit: "%",      color: "#f59e0b", warn: 80                                       },
+      { label: "Memory",     value: health.memory.used_pct, unit: "%",      color: "#8b5cf6", warn: 85                                       },
+      { label: "DB Pool",    value: health.db_pool.active,  unit: `/${health.db_pool.limit || 0}`, color: "#3b82f6", warn: Math.max(1, health.db_pool.limit) },
+      { label: "Heap Used",  value: heapUsedMB,             unit: " MB",    color: "#10b981", warn: heapTotalMB                              },
+      { label: "CPU Cores",  value: health.cpu.cores,       unit: " cores", color: "#f43f5e", warn: 16                                       },
+      { label: "Process Up", value: procUpDays,             unit: " d",     color: "#f59e0b", warn: 365                                      },
+    ];
+  }, [health]);
+
+  // ── Platform Health strip — same source, formatted for top-of-page summary ──
+  const platformCards = useMemo(() => {
+    const placeholders = ["Uptime","Process Up","CPU Load","Memory","DB Pool","Heap"].map(label => ({
+      label, value: "—", color: "#64748b", icon: "⌛", delta: "loading", up: true,
+    }));
+    if (!health) return placeholders;
+
+    const fmtUptime = (sec: number): string => {
+      if (sec < 60)    return `${sec}s`;
+      if (sec < 3600)  return `${Math.floor(sec / 60)}m`;
+      if (sec < 86400) {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return `${h}h ${m}m`;
+      }
+      const d = Math.floor(sec / 86400);
+      const h = Math.floor((sec % 86400) / 3600);
+      return `${d}d ${h}h`;
+    };
+    const fmtMB = (b: number) => `${(b / 1024 / 1024).toFixed(0)} MB`;
+    const fmtGB = (b: number) => `${(b / 1024 / 1024 / 1024).toFixed(1)} GB`;
+
+    const cpuOk  = health.cpu.load_pct < 80;
+    const memOk  = health.memory.used_pct < 80;
+    const dbOk   = health.db_pool.active_pct < 80;
+    const heapTotal = health.process_memory.heap_total_bytes;
+    const heapPct   = heapTotal > 0 ? (health.process_memory.heap_used_bytes / heapTotal) * 100 : 0;
+    const heapOk    = heapPct < 80;
+
+    return [
+      { label: "Uptime",     value: fmtUptime(health.uptime_seconds),                          color: "#10b981",                     icon: "🟢", delta: "OS",                                          up: true   },
+      { label: "Process Up", value: fmtUptime(health.process_uptime_seconds),                  color: "#3b82f6",                     icon: "⚙️", delta: "Node",                                        up: true   },
+      { label: "CPU Load",   value: `${health.cpu.load_pct.toFixed(1)}%`,                      color: cpuOk ? "#f59e0b" : "#f43f5e", icon: "🔥", delta: `${health.cpu.cores} cores`,                   up: cpuOk  },
+      { label: "Memory",     value: `${health.memory.used_pct.toFixed(1)}%`,                   color: memOk ? "#10b981" : "#f43f5e", icon: "🧠", delta: `${fmtGB(health.memory.total_bytes)} total`,   up: memOk  },
+      { label: "DB Pool",    value: `${health.db_pool.active}/${health.db_pool.limit || "-"}`, color: dbOk  ? "#8b5cf6" : "#f43f5e", icon: "🗄",  delta: `${health.db_pool.active_pct.toFixed(0)}% used`, up: dbOk },
+      { label: "Heap",       value: fmtMB(health.process_memory.heap_used_bytes),               color: heapOk ? "#06b6d4" : "#f43f5e", icon: "💾", delta: `of ${fmtMB(heapTotal)}`,                     up: heapOk },
+    ];
+  }, [health]);
 
   const activityColors = { company: "#f59e0b", system: "#3b82f6", billing: "#10b981", security: "#f43f5e" };
   const activityIcons  = { company: "🏢",       system: "⚙️",       billing: "💰",       security: "🔐"     };
@@ -612,14 +665,7 @@ export default function AdminDashboard() {
         <div className="ad-a3">
           <SLabel>Platform Health</SLabel>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6,minmax(0,1fr))", gap: 10 }}>
-            {[
-              { label: "Uptime",         value: "99.97%", color: "#10b981", icon: "🟢", delta: "30d avg",  up: true  },
-              { label: "API Calls/day",  value: "2.4M",   color: "#3b82f6", icon: "📡", delta: "+12%",     up: true  },
-              { label: "Avg Response",   value: "148ms",  color: "#f59e0b", icon: "⚡", delta: "-22ms",    up: true  },
-              { label: "Error Rate",     value: "0.12%",  color: "#10b981", icon: "✅", delta: "-0.03%",   up: true  },
-              { label: "Storage Used",   value: "1.8 TB", color: "#8b5cf6", icon: "💾", delta: "of 5TB",   up: true  },
-              { label: "Support Tickets",value: "7",      color: "#f43f5e", icon: "🎫", delta: "+2 today", up: false },
-            ].map((item, i) => (
+            {platformCards.map((item, i) => (
               <div key={i} style={{ background: tk.surface, borderRadius: 12, padding: "12px 14px", border: `1px solid ${tk.border}`, boxShadow: tk.shadow, animation: `ad-up .4s ease both ${.05 * i}s`, transition: "all 0.2s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 24px ${item.color}15`; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "none"; (e.currentTarget as HTMLDivElement).style.boxShadow = tk.shadow; }}>
@@ -683,7 +729,7 @@ export default function AdminDashboard() {
             )}
           </GCard>
 
-          {/* Geo Reach */}
+          {/* Geo Reach — TODO: wire to real data; `company` table has no country/region columns yet */}
           <GCard style={{ padding: "18px 20px" }}>
             <CH title="🌍 Geo Reach" />
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -805,6 +851,7 @@ export default function AdminDashboard() {
 
           {/* ── System Monitor Tab ── */}
           {activeTab === "system" && (
+            !health ? <Spinner color={tk.acc} /> : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {sysMetrics.map((m, i) => {
                 const isWarn = m.value >= m.warn * 0.9;
@@ -835,6 +882,7 @@ export default function AdminDashboard() {
                 );
               })}
             </div>
+            )
           )}
 
           {/* ── Audit Logs Tab ── */}
